@@ -1,9 +1,19 @@
 import { describe, test, expect } from 'vitest'
-import { effect } from '../src/reactivity/index'
+import { effect, reactive } from '../src/reactivity/index'
 describe('reactivity core', () => {
   test('reactive + effect', () => {
-    effect()
-    expect(effect()).toBe(1)
+    const obj = reactive({ num: 0 })
+    console.log(`%c------------[]-------------`,'color:orange')
+    console.log(obj)
+    console.log(`%c------------[]-------------`,'color:orange')
+    let num = 0;
+    // effect(() => {
+    //   // obj.num
+    //   num++
+    // })
+    obj['num'] = 2;
+    obj.num = 3;
+    expect(num).toBe(2)
   })
   test.todo('effect 重复执行 cleanup')
   test.todo('嵌套 reactive + effect')
