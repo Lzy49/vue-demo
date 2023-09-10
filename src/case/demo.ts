@@ -1,4 +1,4 @@
-const data = { text: 'hello world' }
+const data = { ok: true, text: 'hello world' }
 
 const bucket = new WeakMap()
 // 收集副作用函数
@@ -30,36 +30,54 @@ function track (target, key) {
       depsMap.set(key, (deps = new Set()))
     }
     deps.add(activeEffect)
+    // 收集当前effectFn的依赖关系
+    activeEffect.deps.push(deps)
 }
 // 收集依赖
 function trigger (target, key) {
   const depsMap = bucket.get(target)
   if (!depsMap) return true
-  const deps = depsMap.get(key)
-  deps && deps.forEach(fn => {      
+  const effects = depsMap.get(key)
+  // 新建一个set结构，避免无限循环
+  const effectsToRun = new Set(effects)
+  effectsToRun && effectsToRun.forEach(fn => {      
     typeof fn === 'function' && fn()
   })
 }
 // 执行依赖
 function effect(fn) {
-  activeEffect = fn
-  // 触发读取操作
-  fn()
+  // ???
+  const effectFn = () => {
+    // 清除当前依赖关系
+    cleanup(effectFn)
+    activeEffect = effectFn
+    // 触发读取操作
+    fn()
+  }
+ 
+  effectFn.deps = []
+  effectFn()
+
+}
+
+// 清除依赖函数的依赖关系
+function cleanup (effectFn) {
+  for (let i = 0; i < effectFn.deps.length; i++) {
+    const deps = effectFn.deps[i]
+    deps.delete(effectFn)
+  }
+  // 最后要重置deps数组 ???
+  effectFn.deps.length = 0
 }
 
 let a
 
 effect(() => {
   console.log('🚀 ~ fn run ~')
-  a = obj.text
+  a = obj.ok ? obj.text : 'ooo'
 })
 
 
 // ====
-
-setTimeout(() => {
-  obj.text = 'hello vue3333'
-}, 500)
-setTimeout(() => {
-  obj.text1 = 'hello vue33332223'
-}, 1000)
+obj.ok = false
+obj.text = 'hello vue3333'
