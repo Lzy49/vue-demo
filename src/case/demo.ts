@@ -1,24 +1,34 @@
 const data = { text: 'hello world' }
 
-const bucket = new Set()
+const bucket = new WeakMap()
 // 收集副作用函数
 let activeEffect
 
 const obj = new Proxy(data, {
   get(target, key) {
     // console.log('🚀 ~ get', key)
-    if (activeEffect) {
-      bucket.add(activeEffect)
+    if (!activeEffect) return target[key]
+    
+    let depsMap = bucket.get(target)
+    if (!depsMap) {
+      bucket.set(target, (depsMap = new Map()))
     }
+    let deps = depsMap.get(key)
+    if (!deps) {
+      depsMap.set(key, (deps = new Set()))
+    }
+    deps.add(activeEffect)
     return target[key]
   },
   set(target, key, newVal) {
     // console.log('🚀 ~ set ~')
     target[key] = newVal
-    bucket.forEach(fn => {      
+    const depsMap = bucket.get(target)
+    if (!depsMap) return true
+    const deps = depsMap.get(key)
+    deps && deps.forEach(fn => {      
       typeof fn === 'function' && fn()
     })
-    // return true 代表设置操作成功
     return true
   }
 })
@@ -40,9 +50,9 @@ effect(() => {
 
 // ====
 
-setTimeout(() => {
-  obj.text = 'hello vue3333'
-}, 500)
-setTimeout(() => {
-  obj.text1 = 'hello vue33332223'
-}, 1000)
+// setTimeout(() => {
+//   obj.text = 'hello vue3333'
+// }, 500)
+// setTimeout(() => {
+//   obj.text1 = 'hello vue33332223'
+// }, 1000)
