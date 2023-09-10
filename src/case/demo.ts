@@ -6,10 +6,22 @@ let activeEffect
 
 const obj = new Proxy(data, {
   get(target, key) {
-    // console.log('🚀 ~ get', key)
     if (!activeEffect) return target[key]
-    
-    let depsMap = bucket.get(target)
+    // 将副作用函数收集到桶中
+    track(target, key)
+    return target[key]
+  },
+  set(target, key, newVal) {
+    target[key] = newVal
+    // 把副作用函数从桶里取出，执行
+    trigger(target, key)
+    return true
+  }
+})
+
+// 收集依赖
+function track (target, key) {
+  let depsMap = bucket.get(target)
     if (!depsMap) {
       bucket.set(target, (depsMap = new Map()))
     }
@@ -18,22 +30,17 @@ const obj = new Proxy(data, {
       depsMap.set(key, (deps = new Set()))
     }
     deps.add(activeEffect)
-    return target[key]
-  },
-  set(target, key, newVal) {
-    // console.log('🚀 ~ set ~')
-    target[key] = newVal
-    const depsMap = bucket.get(target)
-    if (!depsMap) return true
-    const deps = depsMap.get(key)
-    deps && deps.forEach(fn => {      
-      typeof fn === 'function' && fn()
-    })
-    return true
-  }
-})
-
-
+}
+// 收集依赖
+function trigger (target, key) {
+  const depsMap = bucket.get(target)
+  if (!depsMap) return true
+  const deps = depsMap.get(key)
+  deps && deps.forEach(fn => {      
+    typeof fn === 'function' && fn()
+  })
+}
+// 执行依赖
 function effect(fn) {
   activeEffect = fn
   // 触发读取操作
@@ -50,9 +57,9 @@ effect(() => {
 
 // ====
 
-// setTimeout(() => {
-//   obj.text = 'hello vue3333'
-// }, 500)
-// setTimeout(() => {
-//   obj.text1 = 'hello vue33332223'
-// }, 1000)
+setTimeout(() => {
+  obj.text = 'hello vue3333'
+}, 500)
+setTimeout(() => {
+  obj.text1 = 'hello vue33332223'
+}, 1000)
