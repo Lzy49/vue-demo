@@ -15,7 +15,6 @@ let isFlushing = false
 function flushJob() {
   if (isFlushing) return
   isFlushing = true
-  console.log(jobQueue,'jobQueue');
   
   p.then(() => {
     jobQueue.forEach(job => job())
@@ -100,8 +99,10 @@ function effect(fn, options = {}) {
 
 function computed (getter) {
   const effectFn = effect(getter, {lazy: true, scheduler () {
-    if(!dirty)dirty = true
-    trigger(obj, 'value')
+    if(!dirty) {
+      dirty = true
+      trigger(obj, 'value')
+    } 
   }})
   let dirty = true
   let value
@@ -129,12 +130,13 @@ function cleanup (effectFn) {
 }
 
 let a
-
+const b = computed(() => obj.foo + obj.bar)
 const anFn = effect(() => {
   console.log('🚀 ~ fn run ~')
+  console.log(b.value)
 }, 
 {
-  lazy: true,
+  // lazy: true,
   scheduler (fn) {
     console.log('🚀 ~ this is a scheduler')
     jobQueue.add(fn)
@@ -145,6 +147,7 @@ const anFn = effect(() => {
 // 手动执行副作用函数（lazy time
 // anFn()
 
-const b = computed(() => obj.foo + obj.bar)
-console.log(b.value);
+
+obj.foo++
+
 // ====
