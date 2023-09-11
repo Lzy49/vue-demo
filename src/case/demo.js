@@ -1,10 +1,28 @@
-const data = { ok: true, text: 'hello world' }
+const data = { foo: 1 }
 
 const bucket = new WeakMap()
 // 收集副作用函数
 let activeEffect
 // 副作用函数栈
-let effectStack: Array<() => void>  = []
+let effectStack = []
+
+// 任务队列
+const jobQueue = new Set()
+// 用于将任务添加到微任务
+const p = Promise.resolve()
+// 是否在刷新
+let isFlushing = false
+function flushJob() {
+  if (isFlushing) return
+  isFlushing = true
+  console.log(jobQueue,'jobQueue');
+  
+  p.then(() => {
+    jobQueue.forEach(job => job())
+  }).finally(() => {
+    isFlushing = false
+  })
+}
 
 const obj = new Proxy(data, {
   get(target, key) {
@@ -58,7 +76,7 @@ function trigger (target, key) {
   })
 }
 // 
-function effect(fn, options?: {scheduler: () => void}) {
+function effect(fn, options = {}) {
   // ???
   const effectFn = () => {
     // 清除当前依赖关系
@@ -89,16 +107,20 @@ function cleanup (effectFn) {
 let a
 
 effect(() => {
-  console.log('🚀 ~ fn run ~')
-  a = obj.ok ? obj.text : 'ooo'
+  console.log('🚀 ~ fn run ~', obj.foo)
 }, 
 {
-  scheduler () {
-    console.log('🚀 ~ this is a scheduler:')
+  scheduler (fn) {
+    console.log('🚀 ~ this is a scheduler')
+    jobQueue.add(fn)
+    flushJob()
   }
 })
 
 
 // ====
-obj.ok = false
-obj.text = 'hello vue3333'
+obj.foo++
+obj.foo++
+obj.foo++
+obj.foo++
+obj.foo++
