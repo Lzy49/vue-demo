@@ -90,8 +90,11 @@ function effect(fn, options = {}) {
   }
   effectFn.options = options
   effectFn.deps = []
-  effectFn()
-
+  if (!options.lazy) {
+    effectFn()
+  }
+  // lazy的时候加的
+  return effectFn
 }
 
 // 清除依赖函数的依赖关系
@@ -106,16 +109,20 @@ function cleanup (effectFn) {
 
 let a
 
-effect(() => {
+const anFn = effect(() => {
   console.log('🚀 ~ fn run ~', obj.foo)
 }, 
 {
+  lazy: true,
   scheduler (fn) {
     console.log('🚀 ~ this is a scheduler')
     jobQueue.add(fn)
     flushJob()
   }
 })
+
+// 手动执行副作用函数（lazy time
+anFn()
 
 
 // ====
