@@ -1,4 +1,4 @@
-const data = { foo: 1 }
+const data = { foo: 1, bar: 2 }
 
 const bucket = new WeakMap()
 // 收集副作用函数
@@ -84,9 +84,10 @@ function effect(fn, options = {}) {
     activeEffect = effectFn
     effectStack.push(effectFn)
     // 触发读取操作
-    fn()
+    const res = fn()
     effectStack.pop()
     activeEffect = effectStack[effectStack.length - 1]
+    return res
   }
   effectFn.options = options
   effectFn.deps = []
@@ -95,6 +96,16 @@ function effect(fn, options = {}) {
   }
   // lazy的时候加的
   return effectFn
+}
+
+function computed (getter) {
+  const effectFn = effect(getter, {lazy: true})
+  const obj = {
+    get value () {
+      return effectFn()
+    }
+  }
+  return obj
 }
 
 // 清除依赖函数的依赖关系
@@ -110,7 +121,7 @@ function cleanup (effectFn) {
 let a
 
 const anFn = effect(() => {
-  console.log('🚀 ~ fn run ~', obj.foo)
+  console.log('🚀 ~ fn run ~')
 }, 
 {
   lazy: true,
@@ -122,12 +133,8 @@ const anFn = effect(() => {
 })
 
 // 手动执行副作用函数（lazy time
-anFn()
+// anFn()
 
-
+const b = computed(() => obj.foo + obj.bar)
+console.log(b.value);
 // ====
-obj.foo++
-obj.foo++
-obj.foo++
-obj.foo++
-obj.foo++
