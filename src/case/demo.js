@@ -99,10 +99,18 @@ function effect(fn, options = {}) {
 }
 
 function computed (getter) {
-  const effectFn = effect(getter, {lazy: true})
+  const effectFn = effect(getter, {lazy: true, scheduler () {
+    dirty = true
+  }})
+  let dirty = true
+  let value
   const obj = {
     get value () {
-      return effectFn()
+      if (dirty) {
+        value = effectFn()
+        dirty = false
+      }
+      return value
     }
   }
   return obj
