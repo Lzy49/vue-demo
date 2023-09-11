@@ -3,6 +3,8 @@ const data = { ok: true, text: 'hello world' }
 const bucket = new WeakMap()
 // 收集副作用函数
 let activeEffect
+// 副作用函数栈
+let effectStack: Array<() => void>  = []
 
 const obj = new Proxy(data, {
   get(target, key) {
@@ -33,26 +35,35 @@ function track (target, key) {
     // 收集当前effectFn的依赖关系
     activeEffect.deps.push(deps)
 }
-// 收集依赖
+// 执行依赖
 function trigger (target, key) {
   const depsMap = bucket.get(target)
   if (!depsMap) return true
   const effects = depsMap.get(key)
   // 新建一个set结构，避免无限循环
-  const effectsToRun = new Set(effects)
+  const effectsToRun = new Set()
+  // 如果trigger 触发的副作用函数与当前正在执行的副作用函数是同一个时，不触发执行
+  effects && effects.forEach(fn => {      
+    if (fn !== activeEffect) {
+      effectsToRun.add(fn)
+    }
+  })
   effectsToRun && effectsToRun.forEach(fn => {      
     typeof fn === 'function' && fn()
   })
 }
-// 执行依赖
+// 
 function effect(fn) {
   // ???
   const effectFn = () => {
     // 清除当前依赖关系
     cleanup(effectFn)
     activeEffect = effectFn
+    effectStack.push(effectFn)
     // 触发读取操作
     fn()
+    effectStack.pop()
+    activeEffect = effectStack[effectStack.length - 1]
   }
  
   effectFn.deps = []
