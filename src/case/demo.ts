@@ -49,11 +49,16 @@ function trigger (target, key) {
     }
   })
   effectsToRun && effectsToRun.forEach(fn => {      
-    typeof fn === 'function' && fn()
+    // if has scheduler, scheduler()
+    if (fn.options.scheduler) {
+      fn.options.scheduler(fn)
+    } else {
+      typeof fn === 'function' && fn()
+    }
   })
 }
 // 
-function effect(fn) {
+function effect(fn, options?: {scheduler: () => void}) {
   // ???
   const effectFn = () => {
     // 清除当前依赖关系
@@ -65,7 +70,7 @@ function effect(fn) {
     effectStack.pop()
     activeEffect = effectStack[effectStack.length - 1]
   }
- 
+  effectFn.options = options
   effectFn.deps = []
   effectFn()
 
@@ -86,6 +91,11 @@ let a
 effect(() => {
   console.log('🚀 ~ fn run ~')
   a = obj.ok ? obj.text : 'ooo'
+}, 
+{
+  scheduler () {
+    console.log('🚀 ~ this is a scheduler:')
+  }
 })
 
 
