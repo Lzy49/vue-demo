@@ -138,9 +138,18 @@ function watch (source, cb, options = {}) {
   }
   
   let oldValue, newValue
+  
+  let cleanup
+  function onInvalidate (fn) {
+    cleanup = fn
+  }
+  
   const job =  () => {
     newValue = effectFn()
-    cb(newValue, oldValue)
+    if (cleanup) {
+      cleanup()
+    }
+    cb(newValue, oldValue, onInvalidate)
     oldValue = newValue
   }
   const effectFn = effect(
@@ -174,25 +183,38 @@ function traverse (value, seen = new Set()) {
   return value
 }
 
-let a
-const b = computed(() => obj.foo + obj.bar)
-const anFn = effect(() => {
-  console.log('🚀 ~ fn run ~')
-  console.log(b.value)
-}, 
-{
-  // lazy: true,
-  scheduler (fn) {
-    console.log('🚀 ~ this is a scheduler')
-    jobQueue.add(fn)
-    flushJob()
+let resData
+watch(obj, async (newValue, oldValue, onInvalidate) => {
+  let expired = false
+  onInvalidate(() => {
+    expired = true
+  })
+  const res = await fetch('/api')
+  if (!expired) {
+    resData = res
   }
+  
 })
+
+// let a
+// const b = computed(() => obj.foo + obj.bar)
+// const anFn = effect(() => {
+//   console.log('🚀 ~ fn run ~')
+//   console.log(b.value)
+// }, 
+// {
+//   // lazy: true,
+//   scheduler (fn) {
+//     console.log('🚀 ~ this is a scheduler')
+//     jobQueue.add(fn)
+//     flushJob()
+//   }
+// })
 
 // 手动执行副作用函数（lazy time
 // anFn()
 
 
-obj.foo++
+// obj.foo++
 
 // ====
