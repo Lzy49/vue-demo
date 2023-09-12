@@ -147,7 +147,14 @@ function watch (source, cb, options = {}) {
     () => getter(),
     {
       lazy: true, // 手动调用拿oldValue
-      scheduler: job
+      scheduler: () => {
+        if (options.flush === 'post') {
+          const p = Promise.resolve()
+          p.then(job)
+        } else {
+          job()
+        }
+      }
     }
   )
   
@@ -156,8 +163,6 @@ function watch (source, cb, options = {}) {
   } else {
     oldValue = effectFn()
   }
-  
-  
 }
 
 function traverse (value, seen = new Set()) {
