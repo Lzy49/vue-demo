@@ -129,6 +129,40 @@ function cleanup (effectFn) {
   effectFn.deps.length = 0
 }
 
+function watch (source, cb) {
+  let getter
+  if (typeof source === 'function') {
+    getter = source
+  } else {
+    getter = () => traverse(source)
+  }
+  
+  let oldValue, newValue
+  
+  const effectFn = effect(
+    () => getter(),
+    {
+      lazy: true, // 手动调用拿oldValue
+      scheduler () {
+        newValue = effectFn()
+        cb(newValue, oldValue)
+        oldValue = newValue
+      }
+    }
+  )
+  
+  oldValue = effectFn()
+}
+
+function traverse (value, seen = new Set()) {
+  if (typeof value !== 'object' || value === null || seen.has(value)) return
+  seen.add(value)
+  for (const k in value) {
+    traverse(value[k], seen)
+  }
+  return value
+}
+
 let a
 const b = computed(() => obj.foo + obj.bar)
 const anFn = effect(() => {
