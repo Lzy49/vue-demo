@@ -3,17 +3,15 @@ import { effect, reactive } from '../src/reactivity/index'
 describe('reactivity core', () => {
   test('reactive + effect', () => {
     const obj = reactive({ num: 0 })
-    console.log(`%c------------[]-------------`,'color:orange')
-    console.log(obj)
-    console.log(`%c------------[]-------------`,'color:orange')
     let num = 0;
-    // effect(() => {
-    //   // obj.num
-    //   num++
-    // })
+    effect(() => {
+      obj.num
+      num++
+    })
     obj['num'] = 2;
     obj.num = 3;
-    expect(num).toBe(2)
+    obj.num = 4;
+    expect(num).toBe(4)
   })
   test.todo('effect 重复执行 cleanup')
   test.todo('嵌套 reactive + effect')
