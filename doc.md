@@ -52,3 +52,96 @@ newVal)`
 - 所以我们可以通过 receiver 来判定 target 是否是 receiver 的目标对象即可.
 - 即在创建时,设置__raw__为该对象的目标.
 - 在set函数中判断 receiver.__raw__ === target 才进行 trigger .
+# 浅响应和深响应
+## 深响应
+- Proxy 和 拷贝变量相同, 只会对第一层起作用, 当代理对象中的值是对象时,对象的值发生修改,并不能触发 Proxy 代理对象收集的依赖.因为 target 中的对象并不是响应值.
+- 解决问题的关键在于 给内部对象增加响应性 . 即在 get 返回的时候 返回一个响应值对象.这样,每次调用该对象的值时,就可以收集他自身的依赖
+- 即 在 get 中 判断返回值 是 object , 则返回 reactive(object) 即可. 否则返回 target[key]
+## 浅响应
+- 浅响应即我们开始实现的方案. value 为 obj 的值增加响应性.
+- 增加阀门 , 判断 isShallow 返回基本值即可.
+# 只读和浅只读
+- 只读变量的实现关键在于拦截:
+  - set: 拦截变量修改 , 修改只读属性, 不可修改直接返回 true
+  - get: 因为只读属性不可能被修改所以 在 get 的时候不需要将依赖收集到 deps 中
+  - deleteProperty : 拦截删除,不允许删除只读对象的 任何 property. 
+- 当 readonly 包裹的是 响应对象, 并不影响使用. 逻辑是:
+  -  读取只读值 -> 只读值读取 target 的值 -> 读取 target 值 被 target 的 get 拦截 -> target 收集 依赖 .
+  -  修改只读值依赖值 -> 依赖值执行自己的 deps 中的依赖 -> 执行到 readonly 所包裹的值.
+- 浅只读值
+  - 因为值读值自己不存在响应性的问题 , 所以 通过 禁止 深响应即可实现深只读 -> 深响应本质是 -> 深代理
+# 代理数组
+- 对象并不是一个 常规对象. 是一个 异质对象 , 所以 Proxy 并不能将所有点都代理,需要我们自行完善
+## length 和 index
+### index 影响 length
+- `数组长度是 5, 添加下标为 7的值`: 导致问题,set 可以触发,但是数组长度变化没有被响应.
+- 拦截 set 在 set 时判断 key >= length 时 set 否则 add
+- 在 trigger 时, 在 add 的情况下 在处理本身以外后 需要将 length 对应的 effect 也运行一次. 
+### length 影响 index
+
+- 现象: 设置 数组 length < 原始数组  length -> 部分值被删除 -> 影响到该部分 index
+- 解决: 
+  - 在 trigger 中判断 修改 key === length 且 length < old length .
+  - 从 deps 中拿取 > newLength 的 key 值, 
+  - 进行通知
+## 遍历数组
+
+- 在处理遍历时, for in 可以和 对象一样监听对象本身 ,而 其他迭代器方法,都使用了迭代器.
+- 这些遍历方法只需要在数组长度发生变化监听即可.
+- 所以,只需要在调用到数组本身时,收集一条 length 的依赖即可.
+- 数组值的多少发生变化 -> length 发生变化 -> 遍历执行.
+
+## 一切对象 的 Symbol 值处理
+1. 对象有很多方法都使用 Symbol 值处理, 而这些内容是不需要增加响应性的.
+2. 所以在 get 的时候 判断 Symbol 值不增加响应性.
+## 数组的查找方法
+- 在 `indexOf`,`lastIndexOf`,`includes` 这3个函数的实现中 , 会返回 this 的值 即代理对象本身. 这会造成 当使用一个数组中的对象使用 includes 在数组代理对象中查找时 , 没有找到值
+- 针对这个问题,需要重写 以上 3种方法.方案:
+  - 在 自身上找一次没找到
+  - 在 自身的 __RAW__ 上找,
+  - 没找到 -> false
+  - 找到了 -> index
+## 隐式修改数组长度的原型方法
+### 起因
+- `push/pop/shift/unshift/splice` 中会间接调用 length 属性,导致 length 收集了使用 push 的副作用.
+- 每次 length 更改 就会执行 push 对应的副作用.
+- 其实 push 是给数组增加值,没有被收集的道理.
+### 解决
+- 在使用 push 时禁止 track 收集该 effect 即可.
+- 则修改 push 内部实现, 设置 shouldTrack = false 表示 禁止追踪
+- 在 track 时 判断 shouldTrack == false 时 禁止 收集.
+# 代理 Set 和 Map
+- Set 和 Map 和 常规对象非常不同. 所以需要设置新的判定
+## size 值
+- size 获取值失败问题
+  - size 值是一个 get () , 在 Proxy 上咩有,所有只能通过 target 获取.
+  - if(key === 'size') return Reflect.get(target,key,target)
+- size 获取值 依赖追踪问题
+  - size 的改变和 对象 key 数量相同 
+  - key === 'size' && track(target , ITERATE_KEY)
+## delete 函数
+- 因为 delete 函数中有 this 值,所以 在使用这些方法时需要 将 this 指向,指会 target 
+- get -> target[key].bind(target)
+`
+## add 函数
+- 判断值是否存在 -> 不存在
+- 调用 target.add
+- 调用后 trigger(target,key,'ADD')
+## set 函数
+- 从 target.raw 中拿到原始值
+- 调用 raw.has 判断值是否存在
+- 不存在 ->设置新值 -> 执行 add trigger
+- 存在 -> 修改值 -> 执行 set trigger
+> 1. 在设值的时候, 需要判断值是否是一个响应对象,如果是的则将其 __RAW__存起来, 因为调用 的 set 是 target 本身的 set 直接存代理对象会污染 target 
+> 2. 因为 Set 既关系 key 也关心 value , 所以 在 key 变化有要  trigger(target,ITERATE_KEY)
+## get 函数
+- 从 target.raw 中拿到原始值
+- 调用 raw.has 判断值是否存在
+- 执行 收集
+- 如果 值存在 ,返回值 如果值为对象则返回响应值
+## forEach
+- 在 forEach 执行时要 执行一次 track(target,ITERATE_KEY)
+- 为了实现之上而下的响应,我们需要在 循环中为 object 添加响应性.
+- 这样当数据增减时会执行通知.
+## 迭代器
+- 
