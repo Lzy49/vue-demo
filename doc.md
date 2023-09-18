@@ -143,5 +143,13 @@ newVal)`
 - 在 forEach 执行时要 执行一次 track(target,ITERATE_KEY)
 - 为了实现之上而下的响应,我们需要在 循环中为 object 添加响应性.
 - 这样当数据增减时会执行通知.
-## 迭代器
-- 
+## 迭代器方法
+- 迭代器方法是由 [Symbol.iterator] 产生的. 所以更改迭代器方法,值需要更改 [Symbol.iterator] 
+- Symbol.iterator  , entries 处理
+  1. 获取值的原始值
+  2. 通过原始值的 Symbol.iterator 获取结果
+  3. 对结果进行代理 -> key , value 都需要包裹
+  4. 返回结果
+- next 函数处理
+  1. 通过 原始值的 next 获取值
+  2. 返回 value 与 done
