@@ -153,3 +153,21 @@ newVal)`
 - next 函数处理
   1. 通过 原始值的 next 获取值
   2. 返回 value 与 done
+
+
+# 原始值响应式方案
+- 因为原始值无法被拦截 -> 所以需要使用一个非原始值包裹 -> 所以使用 reactive 包裹原始值,使原始值变响应值 -> ref 方法 创建包裹的 工场函数.
+- ref 的工作 
+  - 创建一个 reactive 值, 并设置唯一 key 为 value 
+  - 标记值为 ref 原始值.
+# 响应丢失问题 
+## 影响范围
+1. setup 抛出的值 在 模板中不需要写 value 即可使用
+2. reactive 值解构如何解构.
+## toRef
+- toRef 是将 reactive 值 转为 ref 类似值  
+- toRef 的内部其实是做了一个 get value 和 set value 代理 目标还是 reactive 值本身. 且会标识 对象为 ref 值
+## proxyRefs 
+- 利用 proxy 代理一个对象 
+  - get: 在 proxy 的 get 中 判定 如果是 ref 值 返回 value 否则 返回 值本身.
+  - set: 在 proxy 的 set 中 判定 如果是 ref 值 修改 value 否则 修改 值本身.
