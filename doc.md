@@ -161,6 +161,7 @@ newVal)`
   - 创建一个 reactive 值, 并设置唯一 key 为 value 
   - 标记值为 ref 原始值.
 # 响应丢失问题 
+
 ## 影响范围
 1. setup 抛出的值 在 模板中不需要写 value 即可使用
 2. reactive 值解构如何解构.
@@ -171,3 +172,38 @@ newVal)`
 - 利用 proxy 代理一个对象 
   - get: 在 proxy 的 get 中 判定 如果是 ref 值 返回 value 否则 返回 值本身.
   - set: 在 proxy 的 set 中 判定 如果是 ref 值 修改 value 否则 修改 值本身.
+
+
+
+
+# 渲染器
+## 渲染器 和 响应式数据 之间是如何联系的
+在响应式的副作用函数中 执行渲染器函数 . 当渲染器函数中引用了响应数据 .就可以触发响应.
+## 渲染器 renderer 
+渲染器的作用就是 虚拟 DOM 渲染为特定平台上的真实元素, 在浏览器平 台上，渲染器会把虚拟 DOM 渲染为真实 DOM 元素。
+## 虚拟DOM
+- 虚拟DOM = vdom = vnode
+- 虚拟DOM 是和 真实DOM 结构相同的 树结构.
+## 渲染器 
+- 渲染器 是由 创建渲染器函数(createRenderer) 创建的 (原因是 根据不同 渲染方案进行渲染,依赖倒置) 
+- 渲染器 做的事情:
+  - render
+    - 有新 vnode 进行 patch 对比
+    - 无新 vnode 进行 卸载 .
+    - 重置 old-vnode
+  - patch
+    - 有新无旧 : 挂载(mountElement)
+  - mountElement ( 浏览器操作dom ) ->  vnode -> 真实 js 操作 dom 语句 -> 执行.
+  - 
+## 总结
+- createRenderer(option) -> 创建 一个渲染器 , option 自定义配制对象 是为了实现自定义行为. 调用平台能力 即 浏览器 操作 DOM. 
+- renderer 
+  - render 
+    - 当有 new vnode -> patch
+    - 无 new vnode -> unmount
+    - 记录上一次的 vnode
+  - patch
+    - !old -> 首次挂载 -> mountElement
+    - old -> 更新 ->  ? 
+  - 
+
