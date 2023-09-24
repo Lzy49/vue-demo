@@ -7,7 +7,17 @@
       - 记录上一次的 vnode
     - patch( old Vnode, new Vnode , container)
       - !old -> 首次挂载 -> mountElement
-      - old -> 更新 ->  ? 
+      - old -> 更新 ->  
+        - newVnode.type !== oldVnode.type -> unmount(oldVnode) , oldVnode = null  
+        - 判断 newVnode.type 与 old.type 是否相同
+          - 不同 -> 卸载旧的  -> 存放新的
+          - 相同
+            - Symbol.Fragment -> 代码片断 -> 无 old patch插入  ? 有 old Diff 
+            - Symbol.text -> 文本 -> 无 old 创建 ? 有 old 更新
+            - Symbol.Comment -> 注释 -> 无 old 创建 ? 有 old 更新
+            - string -> html 节点 -> oldVnode ? patchElement : mountElement 
+            - object -> 组件 -> TODO
+            - xx -> TODO
     - mountElement(vnode , container) -> 用来完成挂载
       -  把 vnode 解析成真实 dom 
         - 解析 自己的 props -> dom 属性 -> patchProps 
@@ -15,14 +25,36 @@
           - string -> 直接 setText
           - Array -> 循环 - patch(null , item ,父节点)
       -  把解析好的dom 挂载到容器上
+    - unmount()
+      - js 移除旧节点 ( node.el.parent.remove(node.el))
 
 - option
   - patchProps -> 
-    - 判断 props 是 class or style -> 指令正常化处理 -> 使用对应高效方案处理
-    - 判断 props 是否只能通过 setAttribute 设置 ( condition : 只读属性 映射表 ) 
-    - 判断 props 是否在 el 上存在
-      - 存在 : [typeof el.xx  === boolean && '' => true] -> 使用 el.xx = xx 来处理
-      - 不存在: 使用 setAttribute 来处理
+    - 处理属性
+      - 判断 props 是 class or style -> 指令正常化处理 -> 使用对应高效方案处理
+      - 判断 props 是否只能通过 setAttribute 设置 ( condition : 只读属性 映射表 ) 
+      - 判断 props 是否在 el 上存在
+        - 存在 : [typeof el.xx  === boolean && '' => true] -> 使用 el.xx = xx 来处理
+        - 不存在: 使用 setAttribute 来处理
+    - 处理事件
+      - 以 on 开头的是事件.
+      - 以 伪造事件处理函数(invoker) 执行事件
+        - 记录 invoker 绑定 el 高精时间
+        - 事件传入
+          - 如果 invoker 存在 -> 替换
+          - 如果 invoker 不存在 -> 安装
+        - 无事件传入
+          - 如果 invoker 存在 -> removeEventLister
+        - 妙: 
+          - 以中间函数调用 props 中的事件, 可以节省 addEventLister 消耗
+          - 以中间函数调用 props 中的事件, 方便 模板修饰符.
+          - 以数组 + 字符串形势 管理 props 中重复事件 , 以编译时节省运行时.
+          - 无事件卸载 中间函数 , 有事件使用中间函数 ,冲突更改事件不会调用 addEventLister
+      - 事件执行
+        - 获取当前时间和绑定事件比较 如果 绑定时间 > 当前 -> return (为了处理 绑定事件发生在事件冒泡之前.)
+        - 执行事件.
+    - 
+
 ## 知识
 1. getAttribute 对于一些属性只会取其初始值 例如 input.value 
 2. HTML Attributes 可能关联多个 DOM Properties。
