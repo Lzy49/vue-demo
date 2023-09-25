@@ -18,6 +18,21 @@
             - string -> html 节点 -> oldVnode ? patchElement : mountElement 
             - object -> 组件 -> TODO
             - xx -> TODO
+        - 判断 newVnode.children -> patchChildren
+    - patchChildren
+      - string -> 更新文案即可
+        - array -> 
+          - diff 算法
+            - 取 min(old.length, new.length) -> 为了最少的jinx path 比较
+            - 判断新增 (old.length < new.length) -> 挂载 new 中剩余节点
+            - 判断删除 (old.length > new.length) -> 卸载 old 中剩余节点
+          - key 判断 (想要复用 item 通过 type 判定有点草率 , 所以给 item 定义了 ID_Card)
+            -  循环旧节点 -> 如果在新节点中找到相同 key -> 
+               - 有 -> patch(该节点) -> 移动节点
+                 - 循环新旧节点时 , 记录最大 index.
+                 - 当前节点(旧节点)的 index < 最大 index ?  需要移动的节点 : 更新 最大 index
+               - 无 -> break
+
     - mountElement(vnode , container) -> 用来完成挂载
       -  把 vnode 解析成真实 dom 
         - 解析 自己的 props -> dom 属性 -> patchProps 
@@ -53,7 +68,7 @@
       - 事件执行
         - 获取当前时间和绑定事件比较 如果 绑定时间 > 当前 -> return (为了处理 绑定事件发生在事件冒泡之前.)
         - 执行事件.
-    - 
+  - 
 
 ## 知识
 1. getAttribute 对于一些属性只会取其初始值 例如 input.value 
