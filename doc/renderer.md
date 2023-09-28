@@ -16,7 +16,7 @@
             - Symbol.text -> 文本 -> 无 old 创建 ? 有 old 更新
             - Symbol.Comment -> 注释 -> 无 old 创建 ? 有 old 更新
             - string -> html vnode -> oldVnode ? patchElement : mountElement 
-            - object -> 组件 -> TODO
+            - object -> 组件(render) -> oldVnode ? patchComponent : mountComponent
             - xx -> TODO
         - 判断 newVnode.children -> patchChildren
     - patchChildren
@@ -98,6 +98,13 @@
           - string -> 直接 setText
           - Array -> 循环 - patch(null , item ,父vnode)
       -  把解析好的dom 挂载到容器上
+    - mountComponent
+      - reactive 包裹 option.data() 值 为 state
+      - effect 为 render 添加副作用 
+        - 执行 option.render.call(state, state) 函数得到vnode .
+        - 使用 scheduler 拦截 修改 同步到 下一个 事件循环中进行更新.
+        - scheduler 中 
+      - vnode 传入 patch 进行继续渲染.
     - unmount()
       - js 移除旧vnode ( node.el.parent.remove(node.el))
 
