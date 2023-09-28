@@ -61,7 +61,7 @@
           - 快速比较法
             - 快速比较法的原理是: 比较两个数据, 从头 从尾比较,找出差异. 使用场景是在一个有序内容中插入一个内容,寻找该内容.
             - 操作:
-              - 寻找最小子序列
+              - 寻找需要更改的列
                 - 比较开始位置 -> 创建 j -> 当 old-list[j] !== new-list[j] -> 跳出
                 - 比较结束位置 -> 创建 o-end , n-end ( 因为两个数组长度可能不同) -> old-list[o-end] !== new-list[n-end]  -> 跳出
               - 判定
@@ -90,7 +90,7 @@
                       - 当 index 在 最小子序列时 . index = index - 最小子序列.length + 1;
                       - 当 index 不在 最小子序列时
                         - source[index]=== -1 -> 新增到 index + j + 1 的位置.
-                        - source[index]!== -1 -> 移动该节点 到 source-index + j + 1 的vnode前面
+                        - source[index]!== -1 -> 移动该节点 到 index + j + 1 的vnode前面
     - mountElement(vnode , container) -> 用来完成挂载
       -  把 vnode 解析成真实 dom 
         - 解析 自己的 props -> dom 属性 -> patchProps 
