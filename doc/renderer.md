@@ -99,15 +99,63 @@
           - Array -> 循环 - patch(null , item ,父vnode)
       -  把解析好的dom 挂载到容器上
     - mountComponent
-      - reactive 包裹 option.data() 值 为 state
-      - effect 为 render 添加副作用 
-        - 执行 option.render.call(state, state) 函数得到vnode .
+      - 执行 vnode.type 得到 组件 option
+      - [生命周期] option.beforeCreate()
+      - 处理 props 和 attrs 
+        - 循环 vnode.props 判断 instance.props 中是否存在 || 以 on 开头 
+          - true : props.push(item) 
+          - false : attrs.push( item)
+      - 创建 instance 实例 -> 绑定 vnode.component
+        - state : reactive 包裹 option.data() 值 为 state
+        - isMounted : false 判定是否被挂载
+        - subTree : 旧的 vnode 树
+        - props : shallowReactive(props)
+        - slots : vnode.children -> function[]
+        - mounted: [] -> 保存所有的 mounted 生命周期 ( update , unmounted 都如此实现)
+      - 设 currentInstance 当前组件为 instance -> 用来服务 setup 中的生命周期钩子
+      - setup 生命周期钩子 API
+        - onMounted -> 判断当前是否有 currentInstance -> 有 -> 在 setup 中, 收集 fn 到 currentInstance.mounted 中. 
+      - 处理 setup 函数
+        - props 传入 函数
+        - setupContext 传入函数
+          - attrs
+          - emit -> emit 函数 -> 
+            - 参数
+              - eventName -> props['on' + eventName]
+              - option -> 对应函数需要的参数
+            - 做事
+              - if props['on' + eventName] -> event(...option) 
+        - 执行 option.setup 
+        - 判断返回值:
+          - function -> 判断 render (无) -> 以 render 方式运行
+          - object -> 创建 setup 返回 响应值. 在 context 中代理 
+      - 创建 renderContext 代理 instance -> 为 this 取值服务
+        - 代理 data 中的值 和 props 中的值. 使 this.xx -> data.xx || props.xx
+        - 代理 setupContext 运行后的响应值.
+        - 代理 slots 的值 -> 在 render 函数中 会执行到 slot 节点,直接调用 该代理值
+      - [生命周期] created.call(renderContext)
+      - 增加副作用
+        - effect 为 render 添加副作用 & 执行生命周期
+          - isMounted :
+            - false : 挂载 
+              - [生命周期] beforeMount.call(renderContext)
+              - path(null, render 产生的vnode)
+              - isMounted = true 
+              - [生命周期] mounted.foreach(item => item.call(renderContext))
+            - true : 更新
+              - [生命周期] beforeUpdate.call(renderContext) 
+              - patch(instance.subTree , render 产生的vnode)
+              - [生命周期] updated.call(renderContext)
+          - instance.subTree = subTree
         - 使用 scheduler 拦截 修改 同步到 下一个 事件循环中进行更新.
-        - scheduler 中 
       - vnode 传入 patch 进行继续渲染.
+    - patchComponent
+      - new vnode.component = old vnode.component (防止设置新 vnode 后 没有 组件)
+      - 判断 props 和 attrs 是否有变换
+        - 有: 更改 props 和 attrs -> props 的 响应性质 -> 更新组件
+        - 无: 无操作
     - unmount()
       - js 移除旧vnode ( node.el.parent.remove(node.el))
-
 - option
   - patchProps -> 
     - 处理属性
@@ -133,7 +181,6 @@
       - 事件执行
         - 获取当前时间和绑定事件比较 如果 绑定时间 > 当前 -> return (为了处理 绑定事件发生在事件冒泡之前.)
         - 执行事件.
-  - 
 
 ## 知识
 1. getAttribute 对于一些属性只会取其初始值 例如 input.value 
