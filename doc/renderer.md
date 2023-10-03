@@ -16,7 +16,7 @@
             - Symbol.text -> 文本 -> 无 old 创建 ? 有 old 更新
             - Symbol.Comment -> 注释 -> 无 old 创建 ? 有 old 更新
             - string -> html vnode -> oldVnode ? patchElement : mountElement 
-            - object -> 组件(render) -> oldVnode ? patchComponent : mountComponent
+            - object , function -> 组件(render) -> oldVnode ? patchComponent : mountComponent
             - xx -> TODO
         - 判断 newVnode.children -> patchChildren
     - patchChildren
@@ -99,7 +99,9 @@
           - Array -> 循环 - patch(null , item ,父vnode)
       -  把解析好的dom 挂载到容器上
     - mountComponent
-      - 执行 vnode.type 得到 组件 option
+      - 执行 vnode.type 得到
+        - function -> 函数式组件 -> 转为 option.render + option.props
+        - object -> 组件 option
       - [生命周期] option.beforeCreate()
       - 处理 props 和 attrs 
         - 循环 vnode.props 判断 instance.props 中是否存在 || 以 on 开头 
@@ -156,32 +158,34 @@
         - 无: 无操作
     - unmount()
       - js 移除旧vnode ( node.el.parent.remove(node.el))
-- option
-  - patchProps -> 
-    - 处理属性
-      - 判断 props 是 class or style -> 指令正常化处理 -> 使用对应高效方案处理
-      - 判断 props 是否只能通过 setAttribute 设置 ( condition : 只读属性 映射表 ) 
-      - 判断 props 是否在 el 上存在
-        - 存在 : [typeof el.xx  === boolean && '' => true] -> 使用 el.xx = xx 来处理
-        - 不存在: 使用 setAttribute 来处理
-    - 处理事件
-      - 以 on 开头的是事件.
-      - 以 伪造事件处理函数(invoker) 执行事件
-        - 记录 invoker 绑定 el 高精时间
-        - 事件传入
-          - 如果 invoker 存在 -> 替换
-          - 如果 invoker 不存在 -> 安装
-        - 无事件传入
-          - 如果 invoker 存在 -> removeEventLister
-        - 妙: 
-          - 以中间函数调用 props 中的事件, 可以节省 addEventLister 消耗
-          - 以中间函数调用 props 中的事件, 方便 模板修饰符.
-          - 以数组 + 字符串形势 管理 props 中重复事件 , 以编译时节省运行时.
-          - 无事件卸载 中间函数 , 有事件使用中间函数 ,冲突更改事件不会调用 addEventLister
-      - 事件执行
-        - 获取当前时间和绑定事件比较 如果 绑定时间 > 当前 -> return (为了处理 绑定事件发生在事件冒泡之前.)
-        - 执行事件.
-
+  - option
+    - patchProps -> 
+      - 处理属性
+        - 判断 props 是 class or style -> 指令正常化处理 -> 使用对应高效方案处理
+        - 判断 props 是否只能通过 setAttribute 设置 ( condition : 只读属性 映射表 ) 
+        - 判断 props 是否在 el 上存在
+          - 存在 : [typeof el.xx  === boolean && '' => true] -> 使用 el.xx = xx 来处理
+          - 不存在: 使用 setAttribute 来处理
+      - 处理事件
+        - 以 on 开头的是事件.
+        - 以 伪造事件处理函数(invoker) 执行事件
+          - 记录 invoker 绑定 el 高精时间
+          - 事件传入
+            - 如果 invoker 存在 -> 替换
+            - 如果 invoker 不存在 -> 安装
+          - 无事件传入
+            - 如果 invoker 存在 -> removeEventLister
+          - 妙: 
+            - 以中间函数调用 props 中的事件, 可以节省 addEventLister 消耗
+            - 以中间函数调用 props 中的事件, 方便 模板修饰符.
+            - 以数组 + 字符串形势 管理 props 中重复事件 , 以编译时节省运行时.
+            - 无事件卸载 中间函数 , 有事件使用中间函数 ,冲突更改事件不会调用 addEventLister
+        - 事件执行
+          - 获取当前时间和绑定事件比较 如果 绑定时间 > 当前 -> return (为了处理 绑定事件发生在事件冒泡之前.)
+          - 执行事件.
+- defineAsyncComponent (将异步组件转为同步组件)
+  - 将异步组件转为同步组件
+    - 利用响应值属性 -> 抛出一个组件 -> 组件 render 中包含一个响应值 -> 响应值为 false 展示加载中 -> 响应值 为 true 返回 该组件. (响应值在 组件加载完成后改变状态)
 ## 知识
 1. getAttribute 对于一些属性只会取其初始值 例如 input.value 
 2. HTML Attributes 可能关联多个 DOM Properties。
