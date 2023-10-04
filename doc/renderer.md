@@ -16,7 +16,13 @@
             - Symbol.text -> 文本 -> 无 old 创建 ? 有 old 更新
             - Symbol.Comment -> 注释 -> 无 old 创建 ? 有 old 更新
             - string -> html vnode -> oldVnode ? patchElement : mountElement 
-            - object , function -> 组件(render) -> oldVnode ? patchComponent : mountComponent
+            - object , function -> 组件(render) -> 
+              - 是否存在 oldVnode 
+                -  是: patchComponent 
+                -  否: 
+                   - 组件是否是有 keptAlive 
+                     - 有 : keepAlive 子组件 且 已被挂载过 -> 调用 keepAlive.active
+                     - 无 : mountComponent
             - xx -> TODO
         - 判断 newVnode.children -> patchChildren
     - patchChildren
@@ -45,12 +51,12 @@
                   1. old-start === undefined -> old-start ++ 
                   2. old-end === undefined -> old-end --
                 - 处理双端
-                  3. 比较 new-start 和 old-start -> 不动 , 更改 new-start++ , old-start++ (因为 new-start 是正确的顺序,所以只移动指针即可.下个操作会在这个 item 之下操作)
-                  4. 比较 new-start 和 old-end -> 移动 old-end 到 old-start 上面 -> new-start ++  ,  old-end -- (将 old-end 移动到 old-start 上面, 将 item 移动到了 index 范围外,后续不会对其产生影响)
-                  5. 比较 new-end 和 old-end -> 不动 , 更改 new-end -- , old-end --(因为 new-end 是正确的顺序,所以只移动指针即可.下个操作会在这个 item 之下操作)
-                  6. 比较 new-end 和 old-start -> 移动 old-start 到 old-end 下面  , new-end -- , old-start ++ (将 old-start 移动到 old-end 下面, 将 item 移动到了 index 范围外,后续不会对其产生影响)
+                  1. 比较 new-start 和 old-start -> 不动 , 更改 new-start++ , old-start++ (因为 new-start 是正确的顺序,所以只移动指针即可.下个操作会在这个 item 之下操作)
+                  2. 比较 new-start 和 old-end -> 移动 old-end 到 old-start 上面 -> new-start ++  ,  old-end -- (将 old-end 移动到 old-start 上面, 将 item 移动到了 index 范围外,后续不会对其产生影响)
+                  3. 比较 new-end 和 old-end -> 不动 , 更改 new-end -- , old-end --(因为 new-end 是正确的顺序,所以只移动指针即可.下个操作会在这个 item 之下操作)
+                  4. 比较 new-end 和 old-start -> 移动 old-start 到 old-end 下面  , new-end -- , old-start ++ (将 old-start 移动到 old-end 下面, 将 item 移动到了 index 范围外,后续不会对其产生影响)
                 - 处理双端没有办法确定元素
-                  7. 用 new-start 寻找 old list 中 对应的vnode 
+                  1. 用 new-start 寻找 old list 中 对应的vnode 
                     - 找到: 
                       - 将该vnode移动到 old-start 的 前面
                       - 将 old list 中的 该vnode 设置为 undefined .
@@ -114,6 +120,9 @@
         - props : shallowReactive(props)
         - slots : vnode.children -> function[]
         - mounted: [] -> 保存所有的 mounted 生命周期 ( update , unmounted 都如此实现)
+      - keepAlive : 判断 vnode.component.__isKeepAlive === true -> 挂载 keepAliveCtx
+        - move : insert
+        - createElement -> 创建一个元素
       - 设 currentInstance 当前组件为 instance -> 用来服务 setup 中的生命周期钩子
       - setup 生命周期钩子 API
         - onMounted -> 判断当前是否有 currentInstance -> 有 -> 在 setup 中, 收集 fn 到 currentInstance.mounted 中. 
@@ -157,7 +166,12 @@
         - 有: 更改 props 和 attrs -> props 的 响应性质 -> 更新组件
         - 无: 无操作
     - unmount()
-      - js 移除旧vnode ( node.el.parent.remove(node.el))
+      - 判断 vnode.type === object
+        - 判断 vnode.shouldKeepAlive 
+          - 是: 缓存组件 -> 不卸载 -> 使用 其父 deactive 
+          - 否: unmount(vnode.subTree)
+      - 判断 vnode.type === Fragment -> vnode.children.foreach(item => unmount(item))
+      - 其他 -> js 移除旧vnode ( node.el.parent.remove(node.el))
   - option
     - patchProps -> 
       - 处理属性
@@ -186,6 +200,39 @@
 - defineAsyncComponent (将异步组件转为同步组件)
   - 将异步组件转为同步组件
     - 利用响应值属性 -> 抛出一个组件 -> 组件 render 中包含一个响应值 -> 响应值为 false 展示加载中 -> 响应值 为 true 返回 该组件. (响应值在 组件加载完成后改变状态)
+- keepAlive 
+  - props : include : 要缓存  , excludes : 不缓存 , cache : 用来保存所有的 缓存组件. 
+    - cache : 定义了一套接口, 传入值必须符合该接口定义.且该值为了服务缓存太多问题. 故在 值中应自定义 修剪策略 常用策略为 队列 即 先入先嘎.
+  - 定义标识 (__isKeepAlive): 标识其子组件为被缓存组件
+  - 缓存组件: 创建 cache 用来保存其子缓存组件的实例.
+  - 缓存DOM
+    - 创建 storageContainer -> 不挂载到 body 只 , 只存在 js 里
+    - 定义 active(move 元素 -> 其父内) & deactive ( move 元素 -> storageContainer)
+  - 返回 render
+    - 判断 子组件.name 在 include 中 || 子组件.name 不在 excludes 中 
+      - 是: 
+        - 给子组件设置不卸载标识(shouldKeepAlive)
+        - 给子组件设置父组件为 keepAlive
+        - 对子组件进行选择处理:
+          - 第一次进入 : 只缓存 -> 返回子组件
+          - 第二次进入 : 查缓存 -> 标记已缓存(keptAlive) -> 返回子组件
+      - 否 -> 返回子组件
+- Teleport : 传送门
+  - __isTeleport : 标识是传送门组件 
+  - process: 提供处理子节点 的方法
+    - 接收 : n1, n2, container, anchor, internals
+      - internals : 
+        - patch
+        - patchChildren
+        - move
+        - unmount
+    - 做事: 
+      - Teleport.props.to -> 获取真是DOM
+        - !n1 ? n2.foreach(item => patch(null,n2,Teleport.props.to,...)) : patchChildren
+- Transition 
+  - 原理 : 在将 el 挂载到 parent 之前给 该 el 增加 class 保证其效果. 在 效果执行完毕后 使用 transitionend 检测动画结束 执行下个生命周期 -> 当要 卸载时先执行动画 再调用卸载. 
+  - 底层组件:因为牵涉阻塞挂载与阻塞卸载两个无法控制的行为.故其是地层组件
+
 ## 知识
 1. getAttribute 对于一些属性只会取其初始值 例如 input.value 
 2. HTML Attributes 可能关联多个 DOM Properties。
